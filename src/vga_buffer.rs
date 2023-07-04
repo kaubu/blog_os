@@ -1,3 +1,12 @@
+// The VGA Buffer, the interface for reading and writing to the screen
+
+
+use volatile::Volatile;
+use lazy_static::lazy_static;
+use spin::Mutex;
+
+use core::fmt;
+
 // Representing all possible colours in the VGA Buffer
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,7 +46,7 @@ impl ColourCode {
 
 // Represents a single screen character
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-// Guarentees that the struct's fields are laid out exactly like a C struct
+// Guarantees that the struct's fields are laid out exactly like a C struct
 #[repr(C)]
 struct ScreenChar {
     ascii_character: u8,
@@ -51,7 +60,7 @@ const BUFFER_WIDTH: usize = 80;
 // Represents the buffer itself
 #[repr(transparent)]
 struct Buffer {
-    chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 // The public Writer API, used to write to the screen
@@ -73,10 +82,10 @@ impl Writer {
                 let row = BUFFER_HEIGHT - 1;
                 let col = self.column_position;
                 let colour_code = self.colour_code;
-                self.buffer.chars[row][col] = ScreenChar {
+                self.buffer.chars[row][col].write(ScreenChar {
                     ascii_character: byte,
                     colour_code,
-                };
+                });
 
                 self.column_position += 1;
             }
@@ -95,22 +104,70 @@ impl Writer {
     }
 
     fn new_line(&mut self) {
-        // Todo
+        /*
+        Moves every line up (with the top row getting deleted) and starts from
+        the beginning of the last line again
+        */
+        for row in 1..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                let character = self.buffer.chars[row][col].read();
+                self.buffer.chars[row - 1][col].write(character);
+            }
+        }
+
+        self.clear_row(BUFFER_HEIGHT - 1);
+        self.column_position = 0;
+    }
+
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            colour_code: self.colour_code,
+        };
+
+        for col in 0..BUFFER_WIDTH {
+            self.buffer.chars[row][col].write(blank);
+        }
     }
 }
 
-// Temporary test function
-pub fn print_something() {
-    let mut writer = Writer {
+// Implements the core::fmt::Write trait, allowing formatting macros to be used
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
+    }
+}
+
+lazy_static! {
+    // A public static interface for the Writer struct
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
         colour_code: ColourCode::new(
             Colour::Yellow,
             Colour::Black
         ),
-        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) }
-    };
+        buffer: unsafe { &mut *(0xb8000 as *mut Buffer) },
+    });
+}
 
-    writer.write_byte(b'H');
-    writer.write_string("ello ");
-    writer.write_string("Wörld!");
+/*
+Macros for printing to the terminal
+*/
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+// Function for printing
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
 }

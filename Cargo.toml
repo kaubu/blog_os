@@ -18,4 +18,16 @@ panic = "abort"
 panic = "abort"
 
 [dependencies]
+# Enables creating a boot image
 bootloader = "0.9.23"
+# Because future Rust implementations may optimize the reads and writes to the
+# Buffer away, the `volatile` crate allows us to ensure that these reads and
+# writers are never optimized.
+volatile = "0.2.6"
+# Adds safe interior mutability to static variables
+spin = "0.5.2"
+
+# Allows for lazily initiated `static`s at runtime
+[dependencies.lazy_static]
+version = "1.0"
+features = ["spin_no_std"]
