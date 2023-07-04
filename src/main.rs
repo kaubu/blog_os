@@ -11,3 +11,13 @@ use core::panic::PanicInfo;
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
+
+/* 
+Disable name mangling so the Rust compiler outputs the function as _start()
+and not a random name. Otherwise, the OS would not have a start function.
+*/
+#[no_mangle]
+// The operating system entry point, analogous to "fn main()"
+pub extern "C" fn _start() -> ! {
+    loop {}
+}
