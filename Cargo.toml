@@ -5,12 +5,16 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# The profile used for `cargo build`
 [profile.dev]
-# Disable unwinding
+# Disable stack unwinding on panic
+# Not mandatory considering it's already in x86_64-blog_os.json
 panic = "abort"
 
+# The profile used for `cargo build --release`
 [profile.release]
-# Disable unwinding
+# Disable stack unwinding on panic
+# Not mandatory considering it's already in x86_64-blog_os.json
 panic = "abort"
 
 [dependencies]
