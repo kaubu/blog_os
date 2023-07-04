@@ -4,6 +4,10 @@
 # Sets the target to our custom toolchain
 target = "x86_64-blog_os.json"
 
+# Specifies the command to be run after executing `cargo run`
+[target.'cfg(target_os = "none")']
+runner = "bootimage runner"
+
 [unstable]
 # Allows Rust to recompile `core` and other standard library crates on demand
 # using the `x86_64-blog_os` target.
