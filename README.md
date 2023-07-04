@@ -38,6 +38,14 @@ Once the setup is done, you can build the image by simply running
 If you have *qemu* installed, you can type `cargo run` to quickly compile the
 OS and then boot into it with qemu.
 
+### qemu
+If you don't want to recompile the OS from scratch, you can boot in using qemu
+with this command:
+
+```sh
+qemu-system-x86_64 -drive format=raw,file=path/to/bootimage-blog_os.bin
+```
+
 ### Writing the image to a USB stick
 **Be careful** to choose the correct device name, because
 **everything on that device is overwritten.**
